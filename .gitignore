@@ -1,0 +1,13 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+build/
+*.spec
+dist/
+*.egg-info/
+FrameForge_Untitled/
+FrameForge_Sample_Project/cache/
+FrameForge_Sample_Project/logs/
+*.log
+artifacts_*.png
+

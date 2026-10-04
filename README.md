@@ -37,7 +37,7 @@ python -m frameforge --sample D:\Projects\FrameForgeSample
 5. 在 Frame Browser 查看帧；Viewer 支持前后帧、播放和 Onion Skin。
 6. `Animation → Continuity Check` 检查相邻帧的角色、色彩、构图和运动变化。
 7. 从 `Tools` 导入音频和 SRT；Timeline 显示视频、帧、音频、字幕轨。
-8. `Render → Render MP4` 使用 FFmpeg 输出到 `exports/`『
+8. `Render → Render MP4` 使用 FFmpeg 输出到 `exports/`。
 
 ## 测试
 
@@ -69,7 +69,7 @@ PowerShell 用户也可以运行 `scripts\build_windows.ps1`。仓库还提供 `
 ## 项目目录
 
 ```text
-FrameForgeSTudio/
+FrameForgeStudio/
   frameforge/          # 应用和核心服务
   tests/               # 自动测试
   scripts/             # Windows 打包脚本
@@ -78,4 +78,11 @@ FrameForgeSTudio/
 
 ## 已预留接口
 
-`ImageProvider (��统一定义 `generate / edit / variation / reference_generated​，以后可以接 Stable Defous�
+`ImageProvider` 已统一定义 `generate / edit / variation / reference_generate`，以后可以接 OpenAI Image、ComfyUI、Stable Diffusion、RIFE/FILM 补帧；当前只启用本地 Mock Provider。字幕 ASS、音频波形、真正的 AI 光流补帧和更复杂的撤销命令已保留数据与 UI 扩展位置。
+
+## 已知限制
+
+- 当前 Continuity Checker 是轻量本地分析，不是人脸识别或视觉 embedding 模型。
+- Timeline 已可浏览、点击和播放头定位，轨道编辑和音频波形属于下一迭代。
+- FFmpeg 渲染支持图片序列、H.264、音频和烧录 SRT 的基础路径；复杂 ASS 样式和 12→24 光流插帧尚未接入。
+- PyInstaller 在 Linux 环境不能生成 Windows 二进制；请在 Windows 上运行 `build_windows.bat` 生成最终 `.exe`。
