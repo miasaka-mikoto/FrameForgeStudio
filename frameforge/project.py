@@ -71,8 +71,64 @@ class Project:
         meta = ProjectMeta(**json.loads(meta_path.read_text(encoding="utf-8")))
         db_path = root / "database" / "project.sqlite3"
         db = Database(db_path)
+        project = cls(root, meta, db)
+        project._repair_media_paths()
+        # Projects are portable folders. Older/sample databases may contain
+        # absolute paths from the machine that created them; persist the
+        # current root after repairing those references.
+        if project.meta.path != str(root):
+            project.meta.path = str(root)
+            project.save()
         log.info("Opened project %s", root)
-        return cls(root, meta, db)
+        return project
+
+    def _repair_media_paths(self) -> None:
+        """Relink media paths after a project folder is moved or cloned."""
+
+        def resolve(raw: str, preferred: Path | None = None) -> Path | None:
+            if not raw:
+                return None
+            value = Path(raw)
+            if value.is_absolute() and value.exists():
+                return value
+            candidate = (self.root / value).resolve()
+            if candidate.exists():
+                return candidate
+            # Recover an absolute path by keeping the project-relative suffix.
+            parts = value.parts
+            markers = {"references", "characters", "scenes", "shots", "frames", "audio", "subtitles", "exports"}
+            for index, part in enumerate(parts):
+                if part in markers:
+                    candidate = self.root.joinpath(*parts[index:])
+                    if candidate.exists():
+                        return candidate
+            if preferred and preferred.exists():
+                return preferred
+            return None
+
+        for row in self.db.all("SELECT id,scene_id,shot_id,frame_no,file_path FROM frames WHERE project_id=?", (self.meta.project_id,)):
+            raw = row.get("file_path", "")
+            suffix = Path(raw).suffix or ".png"
+            preferred = self.root / "frames" / row["scene_id"] / row["shot_id"] / f"frame_{int(row['frame_no']):04d}{suffix}"
+            resolved = resolve(raw, preferred)
+            if resolved and str(resolved) != raw:
+                self.db.execute("UPDATE frames SET file_path=? WHERE id=?", (str(resolved), row["id"]))
+
+        for row in self.db.all("SELECT id,file_path FROM audio WHERE project_id=?", (self.meta.project_id,)):
+            raw = row.get("file_path", "")
+            resolved = resolve(raw, self.root / "audio" / Path(raw).name)
+            if resolved and str(resolved) != raw:
+                self.db.execute("UPDATE audio SET file_path=? WHERE id=?", (str(resolved), row["id"]))
+
+        for row in self.db.all("SELECT id,reference_path FROM scenes WHERE project_id=?", (self.meta.project_id,)):
+            resolved = resolve(row.get("reference_path", ""))
+            if resolved and str(resolved) != row.get("reference_path", ""):
+                self.db.execute("UPDATE scenes SET reference_path=? WHERE id=?", (str(resolved), row["id"]))
+
+        for row in self.db.all("SELECT id,storyboard_path FROM shots WHERE project_id=?", (self.meta.project_id,)):
+            resolved = resolve(row.get("storyboard_path", ""))
+            if resolved and str(resolved) != row.get("storyboard_path", ""):
+                self.db.execute("UPDATE shots SET storyboard_path=? WHERE id=?", (str(resolved), row["id"]))
 
     def save(self) -> None:
         self.meta.updated_at = utc_now()
