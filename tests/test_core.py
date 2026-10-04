@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import shutil
 from pathlib import Path
 
 from frameforge.continuity import analyze_pair
@@ -40,6 +41,24 @@ def test_sample_project_has_media(tmp_path: Path):
     assert len(project.db.all("SELECT * FROM audio")) == 1
     assert len(project.db.all("SELECT * FROM subtitles")) == 2
     project.close()
+
+
+def test_project_media_paths_relink_after_move(tmp_path: Path):
+    source = Project.create(tmp_path / "Source", "Portable")
+    source.ensure_sample_content()
+    destination = tmp_path / "Moved"
+    source.clone_to(destination).close()
+    source.close()
+    shutil.rmtree(source.root)
+
+    moved = Project.open(destination)
+    frame = moved.db.one("SELECT file_path FROM frames ORDER BY id LIMIT 1")
+    audio = moved.db.one("SELECT file_path FROM audio ORDER BY id LIMIT 1")
+    assert frame and Path(frame["file_path"]).is_file()
+    assert audio and Path(audio["file_path"]).is_file()
+    assert str(destination) in frame["file_path"]
+    assert moved.meta.path == str(destination)
+    moved.close()
 
 
 def test_prompt_and_inbetween_prompt():
