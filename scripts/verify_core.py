@@ -2,8 +2,13 @@
 from __future__ import annotations
 
 import argparse
+import sys
 import tempfile
 from pathlib import Path
+
+# Allow this script to be launched directly from the repository root without
+# requiring an editable install first (works on Windows and POSIX shells).
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from frameforge.continuity import analyze_pair
 from frameforge.project import Project
@@ -34,4 +39,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-
